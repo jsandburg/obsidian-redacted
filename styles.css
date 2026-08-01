@@ -1,0 +1,18 @@
+/* Redacted — settings tab styles */
+
+.redact-preview-section {
+  margin-top: var(--size-4-4);
+}
+
+.redact-preview-code {
+  display: block;
+  padding: var(--size-4-2) var(--size-4-3);
+  background-color: var(--background-secondary);
+  border-radius: var(--radius-s);
+  font-family: var(--font-monospace);
+  font-size: var(--font-smaller);
+  color: var(--text-normal);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
