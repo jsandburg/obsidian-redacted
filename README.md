@@ -25,10 +25,11 @@ My password is ███████ and my cat's name is Miso.
 - **Limited folders** — optionally restrict redaction to specific folders, so the command is only active where it's meant to be used.
 - **Live preview** — the settings tab shows a before/after example of your current style and character.
 - **Shape-preserving** — multi-line selections keep their line breaks in every style, and blank lines stay blank.
+- **Searchable settings** — built on Obsidian's declarative settings API, so every option shows up in the global settings search.
 
 ## Settings
 
-- **Limited folders** — restrict redaction to notes inside specific folders. Enter folder names exactly as they appear in your vault (e.g. `Private` or `Notes/Sensitive`). Leave the list empty to allow redaction anywhere. Running the command outside a limited folder shows a notice instead of silently doing nothing.
+- **Limited folders** — restrict redaction to notes inside specific folders. Add folders with the list's **+** control, entering names exactly as they appear in your vault (e.g. `Private` or `Notes/Sensitive`). Leave the list empty to allow redaction anywhere. Running the command outside a limited folder shows a notice instead of silently doing nothing.
 - **Redaction style** — *Per character*, *Preserve spaces*, or *Fixed length* (see above). Note that *Preserve spaces* reveals word lengths, which makes short redacted phrases easier to guess.
 - **Redaction character** — the preset dropdown, plus *Custom…* for any single character.
 - **Preview** — a live before/after example showing your current redaction style and character in action.
@@ -50,6 +51,8 @@ Treat Redacted as a presentation tool for notes you share or publish, not as a s
 - **Multi-line selections**: line breaks are preserved so redacted text keeps its shape, and blank lines stay blank.
 
 ## Installation
+
+Requires Obsidian 1.13.0 or later.
 
 Until the plugin is available in the community directory, install it manually:
 
