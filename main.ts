@@ -18,7 +18,7 @@ export default class RedactPlugin extends Plugin {
     this.addRibbonIcon("eraser", "Redact selection", () => {
       const view = this.app.workspace.getActiveViewOfType(MarkdownView);
       if (!view) {
-        new Notice("No active markdown note found.");
+        new Notice("No active Markdown note found.");
         return;
       }
       this.runRedactSelection(view.editor);

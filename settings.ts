@@ -64,7 +64,8 @@ export class RedactSettingTab extends PluginSettingTab {
       // normalizePath("") returns "/", which would survive the blank filter
       // and silently disable redaction everywhere. Paths are normalized at
       // comparison time instead (see isInLimitedFolder).
-      this.plugin.settings.watchedFolders[Number(match[1])] = String(value).trim();
+      this.plugin.settings.watchedFolders[Number(match[1])] =
+        typeof value === "string" ? value.trim() : "";
     } else {
       (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
     }
