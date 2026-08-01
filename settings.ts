@@ -72,15 +72,15 @@ export class RedactSettingTab extends PluginSettingTab {
           "\"Notes/Sensitive\") to allow redaction only there.",
         addItem: {
           name: "Add folder",
-          action: async () => {
+          action: () => {
             this.plugin.settings.watchedFolders.push("");
-            await this.plugin.saveSettings();
+            void this.plugin.saveSettings();
             this.update();
           },
         },
-        onDelete: async (index) => {
+        onDelete: (index) => {
           this.plugin.settings.watchedFolders.splice(index, 1);
-          await this.plugin.saveSettings();
+          void this.plugin.saveSettings();
           this.update();
         },
         items: folders.map((folder, index) => ({

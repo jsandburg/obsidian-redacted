@@ -1,6 +1,6 @@
 {
     "name": "redacted",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Permanently replaces selected text with Full Block characters (█).",
     "main": "main.js",
     "scripts": {
