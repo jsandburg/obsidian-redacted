@@ -133,25 +133,28 @@ export class RedactSettingTab extends PluginSettingTab {
     // --- Block character ---
     new Setting(containerEl)
       .setName("Redaction character")
-      .setDesc(
-        "The Unicode character used to replace the original text. " +
-          "Default is █ (U+2588 Full Block). " +
-          "Other options: ░ (U+2591), ▒ (U+2592), ▓ (U+2593), ■ (U+25A0)."
-      )
-      .addText((text) =>
-        text
-          .setPlaceholder("█")
-          .setValue(this.plugin.settings.blockChar)
+      .setDesc("The character used to replace the original text.")
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption("█", "█ Full block (U+2588)")
+          .addOption("░", "░ Light shade (U+2591)")
+          .addOption("▒", "▒ Medium shade (U+2592)")
+          .addOption("▓", "▓ Dark shade (U+2593)")
+          .addOption("■", "■ Black square (U+25A0)");
+        // A character saved by an earlier version's free-text field may not
+        // be in the preset list; add it so the dropdown reflects reality.
+        const current = this.plugin.settings.blockChar;
+        if (!["█", "░", "▒", "▓", "■"].includes(current)) {
+          dropdown.addOption(current, `${current} (custom)`);
+        }
+        dropdown
+          .setValue(current)
           .onChange(async (value) => {
-            // Allow only a single character; take the first if more are typed.
-            // Spread handles multi-byte Unicode correctly.
-            const char = [...value][0];
-            if (!char) return;
-            this.plugin.settings.blockChar = char;
+            this.plugin.settings.blockChar = value;
             await this.plugin.saveSettings();
             if (this.plugin.onSettingsChange) this.plugin.onSettingsChange();
-          })
-      );
+          });
+      });
 
     // --- Preview ---
     const previewSection = containerEl.createDiv({ cls: "redact-preview-section" });
