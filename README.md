@@ -20,16 +20,16 @@ My password is ███████ and my cat's name is Miso.
 - **Three redaction styles**:
   - *Per character* (default) — one block per character, so the redaction is one-to-one: `secret name` → `███████████`
   - *Preserve spaces* — spaces stay visible so word boundaries remain: `secret name` → `██████ ████`
-  - *Fixed length* — each line becomes a constant run of 5 blocks, so nothing about the original word or line lengths leaks: `secret name` → `█████`
+  - *Fixed length* — each line becomes a constant run of 5 blocks, so no word or line length leaks: `secret name` → `█████`
 - **Choice of redaction character** — pick from a dropdown of presets (█ ░ ▒ ▓ ■ ● ★ ✦), or choose *Custom…* and type or paste any single character (✱, ♥, an emoji…).
-- **Limited folders** — optionally restrict redaction to specific folders, so the command is only active where it's meant to be used.
+- **Limited folders** — optionally restrict redaction to specific folders, picked from a vault-folder suggester, so the command is only active where it's meant to be used.
 - **Live preview** — the settings tab shows a before/after example of your current style and character.
 - **Shape-preserving** — multi-line selections keep their line breaks in every style, and blank lines stay blank.
 - **Searchable settings** — built on Obsidian's declarative settings API, so every option shows up in the global settings search.
 
 ## Settings
 
-- **Limited folders** — restrict redaction to notes inside specific folders. Add folders with the list's **+** control, entering names exactly as they appear in your vault (e.g. `Private` or `Notes/Sensitive`). Leave the list empty to allow redaction anywhere. Running the command outside a limited folder shows a notice instead of silently doing nothing.
+- **Limited folders** — restrict redaction to notes inside specific folders. Add a row with the list's **+** control, then pick a folder from the suggester (or type a path like `Notes/Sensitive`); remove one with its **✕**. Leave the list empty to allow redaction anywhere. Running the command outside a limited folder shows a notice instead of silently doing nothing.
 - **Redaction style** — *Per character*, *Preserve spaces*, or *Fixed length* (see above). Note that *Preserve spaces* reveals word lengths, which makes short redacted phrases easier to guess.
 - **Redaction character** — the preset dropdown, plus *Custom…* for any single character.
 - **Preview** — a live before/after example showing your current redaction style and character in action.
@@ -69,7 +69,7 @@ npm install
 npm run build
 ```
 
-This produces `main.js` from the TypeScript sources via esbuild.
+This typechecks with `tsc` and bundles the sources into `main.js` via esbuild.
 
 ## License
 
