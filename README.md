@@ -18,7 +18,7 @@ My password is ███████ and my cat's name is Miso.
 
 - **Limited folders** — restrict redaction to notes inside specific folders. Enter folder names exactly as they appear in your vault (e.g. `Private` or `Notes/Sensitive`). Leave the list empty to allow redaction anywhere. Running the command outside a limited folder shows a notice instead of silently doing nothing.
 - **Redaction style** — *Per character* (one block per character, newlines kept), *Preserve spaces* (spaces stay visible so word boundaries remain — note this reveals word lengths), or *Fixed length* (each line becomes a constant run of 5 blocks, so line lengths don't leak).
-- **Redaction character** — pick the replacement character from a dropdown: █ (default), ░, ▒, ▓, or ■
+- **Redaction character** — pick the replacement character from a dropdown (█ ░ ▒ ▓ ■ ● ★ ✦), or choose Custom… to type or paste any single character
 - **Preview** — a live before/after example showing your current redaction style and character in action.
 
 ## Important: what "permanent" does and doesn't mean

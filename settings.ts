@@ -30,6 +30,8 @@ export const DEFAULT_SETTINGS: RedactPluginSettings = {
 
 export class RedactSettingTab extends PluginSettingTab {
   plugin: RedactPlugin;
+  /** True while the "Custom…" redaction-character option is selected. */
+  private customMode = false;
 
   constructor(app: App, plugin: RedactPlugin) {
     super(app, plugin);
@@ -131,30 +133,61 @@ export class RedactSettingTab extends PluginSettingTab {
       );
 
     // --- Block character ---
+    const PRESETS: [string, string][] = [
+      ["█", "█ Full block"],
+      ["░", "░ Light shade"],
+      ["▒", "▒ Medium shade"],
+      ["▓", "▓ Dark shade"],
+      ["■", "■ Black square"],
+      ["●", "● Black circle"],
+      ["★", "★ Black star"],
+      ["✦", "✦ Four-pointed star"],
+    ];
+    const isPreset = PRESETS.some(([ch]) => ch === this.plugin.settings.blockChar);
+    // Custom mode stays on while the user is picking a character, even if the
+    // current saved character happens to be a preset.
+    const customMode = this.customMode || !isPreset;
+
     new Setting(containerEl)
       .setName("Redaction character")
       .setDesc("The character used to replace the original text.")
       .addDropdown((dropdown) => {
+        for (const [ch, label] of PRESETS) dropdown.addOption(ch, label);
         dropdown
-          .addOption("█", "█ Full block (U+2588)")
-          .addOption("░", "░ Light shade (U+2591)")
-          .addOption("▒", "▒ Medium shade (U+2592)")
-          .addOption("▓", "▓ Dark shade (U+2593)")
-          .addOption("■", "■ Black square (U+25A0)");
-        // A character saved by an earlier version's free-text field may not
-        // be in the preset list; add it so the dropdown reflects reality.
-        const current = this.plugin.settings.blockChar;
-        if (!["█", "░", "▒", "▓", "■"].includes(current)) {
-          dropdown.addOption(current, `${current} (custom)`);
-        }
-        dropdown
-          .setValue(current)
+          .addOption("custom", "Custom…")
+          .setValue(customMode ? "custom" : this.plugin.settings.blockChar)
           .onChange(async (value) => {
-            this.plugin.settings.blockChar = value;
-            await this.plugin.saveSettings();
-            if (this.plugin.onSettingsChange) this.plugin.onSettingsChange();
+            this.customMode = value === "custom";
+            if (value !== "custom") {
+              this.plugin.settings.blockChar = value;
+              await this.plugin.saveSettings();
+            }
+            // Re-render so the custom text field appears or disappears.
+            // (Selecting Custom… keeps the current character until one is typed.)
+            this.display();
           });
       });
+
+    // Shown only in custom mode: type or paste any single character.
+    if (customMode) {
+      new Setting(containerEl)
+        .setName("Custom character")
+        .setDesc("Type or paste any single character (e.g. ✱, ♥, x).")
+        .addText((text) =>
+          text
+            .setPlaceholder("█")
+            .setValue(this.plugin.settings.blockChar)
+            .onChange(async (value) => {
+              // Allow only a single character; take the first if more are typed.
+              // Spread handles multi-byte Unicode correctly.
+              const char = [...value][0];
+              if (!char) return;
+              this.plugin.settings.blockChar = char;
+              await this.plugin.saveSettings();
+              if (this.plugin.onSettingsChange) this.plugin.onSettingsChange();
+            })
+        );
+    }
 
     // --- Preview ---
     const previewSection = containerEl.createDiv({ cls: "redact-preview-section" });
