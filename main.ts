@@ -118,7 +118,8 @@ export default class RedactPlugin extends Plugin {
   // -------------------------------------------------------------------------
 
   async loadSettings() {
-    this.settings = { ...DEFAULT_SETTINGS, ...(await this.loadData()) };
+    const data = (await this.loadData()) as Partial<RedactPluginSettings> | null;
+    this.settings = { ...DEFAULT_SETTINGS, ...data };
   }
 
   async saveSettings() {

@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting, SettingDefinitionItem } from "obsidian";
 import type RedactPlugin from "./main";
 import { redactString, FIXED_LENGTH } from "./redact";
 
@@ -28,6 +28,17 @@ export const DEFAULT_SETTINGS: RedactPluginSettings = {
   watchedFolders: [],
 };
 
+const PRESET_CHARS: [string, string][] = [
+  ["█", "█ Full block"],
+  ["░", "░ Light shade"],
+  ["▒", "▒ Medium shade"],
+  ["▓", "▓ Dark shade"],
+  ["■", "■ Black square"],
+  ["●", "● Black circle"],
+  ["★", "★ Black star"],
+  ["✦", "✦ Four-pointed star"],
+];
+
 export class RedactSettingTab extends PluginSettingTab {
   plugin: RedactPlugin;
   /** True while the "Custom…" redaction-character option is selected. */
@@ -38,175 +49,160 @@ export class RedactSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
-  display(): void {
-    const { containerEl } = this;
-    containerEl.empty();
-
-    // NOTE: No top-level "Redacted" heading here. Obsidian already shows the
-    // plugin name above the settings tab, and the community guidelines say
-    // not to repeat it.
-
-    containerEl.createEl("p", {
-      text:
-        "Select text and run the \"Redact selection\" command (or right-click " +
-        "→ Redact selection) to permanently replace it with block characters.",
-      cls: "setting-item-description",
-    });
-
-    // --- Limited folders ---
-    new Setting(containerEl).setName("Limited folders").setHeading();
-    containerEl.createEl("p", {
-      text:
-        "Redaction commands are only available in notes inside these folders. " +
-        "Use the exact folder name as it appears in your vault (e.g. \"Private\" or \"Notes/Sensitive\"). " +
-        "Leave the list empty to allow redaction in any note.",
-      cls: "setting-item-description",
-    });
-
+  getSettingDefinitions(): SettingDefinitionItem[] {
     const folders = this.plugin.settings.watchedFolders || [];
-
-    // Render one row per existing folder
-    folders.forEach((folder, index) => {
-      new Setting(containerEl)
-        .setName(`Folder ${index + 1}`)
-        .addText((text) =>
-          text
-            .setPlaceholder("e.g. Private")
-            .setValue(folder)
-            .onChange(async (value) => {
-              // Store the raw trimmed value. Do NOT normalizePath() here:
-              // normalizePath("") returns "/", which would survive the blank
-              // filter and silently disable redaction everywhere. Paths are
-              // normalized at comparison time instead (see isInLimitedFolder).
-              this.plugin.settings.watchedFolders[index] = value.trim();
-              await this.plugin.saveSettings();
-            })
-        )
-        .addButton((btn) =>
-          btn
-            .setButtonText("Remove")
-            .setWarning()
-            .onClick(async () => {
-              this.plugin.settings.watchedFolders.splice(index, 1);
-              await this.plugin.saveSettings();
-              this.display();
-            })
-        );
-    });
-
-    // Add folder button
-    new Setting(containerEl).addButton((btn) =>
-      btn
-        .setButtonText("Add folder")
-        .setCta()
-        .onClick(async () => {
-          this.plugin.settings.watchedFolders.push("");
-          await this.plugin.saveSettings();
-          this.display();
-        })
+    const isPreset = PRESET_CHARS.some(
+      ([ch]) => ch === this.plugin.settings.blockChar
     );
 
-    // --- Appearance ---
-    new Setting(containerEl).setName("Appearance").setHeading();
-
-    // --- Redaction style ---
-    new Setting(containerEl)
-      .setName("Redaction style")
-      .setDesc(
-        "Per character replaces each character with a block (newlines kept). " +
-          "Preserve spaces also keeps spaces, so word boundaries stay visible " +
-          "— note this reveals word lengths. Fixed length replaces the whole " +
-          `selection with ${FIXED_LENGTH} blocks, so nothing about the ` +
-          "original length leaks."
-      )
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption("per-character", "Per character")
-          .addOption("preserve-spaces", "Preserve spaces")
-          .addOption("fixed-length", "Fixed length")
-          .setValue(this.plugin.settings.redactionStyle)
-          .onChange(async (value) => {
-            this.plugin.settings.redactionStyle = value as RedactionStyle;
+    return [
+      {
+        name: "",
+        desc:
+          "Select text and run the \"Redact selection\" command (or right-click " +
+          "→ Redact selection) to permanently replace it with block characters.",
+        searchable: false,
+      },
+      {
+        type: "list",
+        heading: "Limited folders",
+        emptyState:
+          "No folders listed — redaction is available in every note. Add a " +
+          "folder (exactly as it appears in your vault, e.g. \"Private\" or " +
+          "\"Notes/Sensitive\") to allow redaction only there.",
+        addItem: {
+          name: "Add folder",
+          action: async () => {
+            this.plugin.settings.watchedFolders.push("");
             await this.plugin.saveSettings();
-            if (this.plugin.onSettingsChange) this.plugin.onSettingsChange();
-          })
-      );
-
-    // --- Block character ---
-    const PRESETS: [string, string][] = [
-      ["█", "█ Full block"],
-      ["░", "░ Light shade"],
-      ["▒", "▒ Medium shade"],
-      ["▓", "▓ Dark shade"],
-      ["■", "■ Black square"],
-      ["●", "● Black circle"],
-      ["★", "★ Black star"],
-      ["✦", "✦ Four-pointed star"],
+            this.update();
+          },
+        },
+        onDelete: async (index) => {
+          this.plugin.settings.watchedFolders.splice(index, 1);
+          await this.plugin.saveSettings();
+          this.update();
+        },
+        items: folders.map((folder, index) => ({
+          name: `Folder ${index + 1}`,
+          searchable: false,
+          render: (setting: Setting) => {
+            setting.addText((text) =>
+              text
+                .setPlaceholder("e.g. Private")
+                .setValue(folder)
+                .onChange(async (value) => {
+                  // Store the raw trimmed value. Do NOT normalizePath() here:
+                  // normalizePath("") returns "/", which would survive the
+                  // blank filter and silently disable redaction everywhere.
+                  // Paths are normalized at comparison time instead (see
+                  // isInLimitedFolder).
+                  this.plugin.settings.watchedFolders[index] = value.trim();
+                  await this.plugin.saveSettings();
+                })
+            );
+          },
+        })),
+      },
+      {
+        type: "group",
+        heading: "Appearance",
+        items: [
+          {
+            name: "Redaction style",
+            desc:
+              "Per character replaces each character with a block (newlines " +
+              "kept). Preserve spaces also keeps spaces, so word boundaries " +
+              "stay visible — note this reveals word lengths. Fixed length " +
+              `replaces each line with ${FIXED_LENGTH} blocks, so line ` +
+              "lengths don't leak.",
+            render: (setting: Setting) => {
+              setting.addDropdown((dropdown) =>
+                dropdown
+                  .addOption("per-character", "Per character")
+                  .addOption("preserve-spaces", "Preserve spaces")
+                  .addOption("fixed-length", "Fixed length")
+                  .setValue(this.plugin.settings.redactionStyle)
+                  .onChange(async (value) => {
+                    this.plugin.settings.redactionStyle = value as RedactionStyle;
+                    await this.plugin.saveSettings();
+                    if (this.plugin.onSettingsChange) this.plugin.onSettingsChange();
+                  })
+              );
+            },
+          },
+          {
+            name: "Redaction character",
+            desc: "The character used to replace the original text.",
+            render: (setting: Setting) => {
+              setting.addDropdown((dropdown) => {
+                for (const [ch, label] of PRESET_CHARS) dropdown.addOption(ch, label);
+                dropdown
+                  .addOption("custom", "Custom…")
+                  .setValue(
+                    this.customMode || !isPreset
+                      ? "custom"
+                      : this.plugin.settings.blockChar
+                  )
+                  .onChange(async (value) => {
+                    this.customMode = value === "custom";
+                    if (value !== "custom") {
+                      this.plugin.settings.blockChar = value;
+                      await this.plugin.saveSettings();
+                    }
+                    // Re-render so the custom text field appears or
+                    // disappears. (Selecting Custom… keeps the current
+                    // character until one is typed.)
+                    this.update();
+                  });
+              });
+            },
+          },
+          {
+            name: "Custom character",
+            desc: "Type or paste any single character (e.g. ✱, ♥, x).",
+            visible: () => this.customMode || !isPreset,
+            render: (setting: Setting) => {
+              setting.addText((text) =>
+                text
+                  .setPlaceholder("█")
+                  .setValue(this.plugin.settings.blockChar)
+                  .onChange(async (value) => {
+                    // Allow only a single character; take the first if more
+                    // are typed. Spread handles multi-byte Unicode correctly.
+                    const char = [...value][0];
+                    if (!char) return;
+                    this.plugin.settings.blockChar = char;
+                    await this.plugin.saveSettings();
+                    if (this.plugin.onSettingsChange) this.plugin.onSettingsChange();
+                  })
+              );
+            },
+          },
+          {
+            name: "Preview",
+            searchable: false,
+            render: (setting: Setting) => {
+              const previewEl = setting.settingEl.createEl("code", {
+                cls: "redact-preview-code",
+              });
+              const updatePreview = () => {
+                previewEl.textContent = `Hello, world!  →  ${redactString(
+                  "Hello, world!",
+                  this.plugin.settings
+                )}`;
+              };
+              updatePreview();
+              this.plugin.onSettingsChange = updatePreview;
+              // Release the preview-updater closure when the row is torn
+              // down, so the plugin doesn't hold a reference to detached DOM.
+              return () => {
+                this.plugin.onSettingsChange = null;
+              };
+            },
+          },
+        ],
+      },
     ];
-    const isPreset = PRESETS.some(([ch]) => ch === this.plugin.settings.blockChar);
-    // Custom mode stays on while the user is picking a character, even if the
-    // current saved character happens to be a preset.
-    const customMode = this.customMode || !isPreset;
-
-    new Setting(containerEl)
-      .setName("Redaction character")
-      .setDesc("The character used to replace the original text.")
-      .addDropdown((dropdown) => {
-        for (const [ch, label] of PRESETS) dropdown.addOption(ch, label);
-        dropdown
-          .addOption("custom", "Custom…")
-          .setValue(customMode ? "custom" : this.plugin.settings.blockChar)
-          .onChange(async (value) => {
-            this.customMode = value === "custom";
-            if (value !== "custom") {
-              this.plugin.settings.blockChar = value;
-              await this.plugin.saveSettings();
-            }
-            // Re-render so the custom text field appears or disappears.
-            // (Selecting Custom… keeps the current character until one is typed.)
-            this.display();
-          });
-      });
-
-    // Shown only in custom mode: type or paste any single character.
-    if (customMode) {
-      new Setting(containerEl)
-        .setName("Custom character")
-        .setDesc("Type or paste any single character (e.g. ✱, ♥, x).")
-        .addText((text) =>
-          text
-            .setPlaceholder("█")
-            .setValue(this.plugin.settings.blockChar)
-            .onChange(async (value) => {
-              // Allow only a single character; take the first if more are typed.
-              // Spread handles multi-byte Unicode correctly.
-              const char = [...value][0];
-              if (!char) return;
-              this.plugin.settings.blockChar = char;
-              await this.plugin.saveSettings();
-              if (this.plugin.onSettingsChange) this.plugin.onSettingsChange();
-            })
-        );
-    }
-
-    // --- Preview ---
-    const previewSection = containerEl.createDiv({ cls: "redact-preview-section" });
-    new Setting(previewSection).setName("Preview").setHeading();
-
-    const updatePreview = () => {
-      previewEl.textContent =
-        `Hello, world!  →  ${redactString("Hello, world!", this.plugin.settings)}`;
-    };
-
-    const previewEl = previewSection.createEl("code", { cls: "redact-preview-code" });
-    updatePreview();
-
-    this.plugin.onSettingsChange = updatePreview;
-  }
-
-  hide(): void {
-    // Release the preview-updater closure so the plugin doesn't hold a
-    // reference to detached DOM after the settings tab closes.
-    this.plugin.onSettingsChange = null;
   }
 }

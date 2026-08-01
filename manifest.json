@@ -1,8 +1,8 @@
 {
     "id": "redacted",
     "name": "Redacted",
-    "version": "1.0.0",
-    "minAppVersion": "1.0.0",
+    "version": "1.0.1",
+    "minAppVersion": "1.13.0",
     "description": "Permanently replaces selected text with Full Block characters (█).",
     "author": "Julie Sandburg",
     "isDesktopOnly": false,

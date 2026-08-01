@@ -1,18 +1,21 @@
 {
     "name": "redacted",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Permanently replaces selected text with Full Block characters (█).",
     "main": "main.js",
     "scripts": {
         "dev": "node esbuild.config.mjs",
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
     },
-    "keywords": ["obsidian", "plugin", "redacted"],
+    "keywords": [
+        "obsidian",
+        "plugin",
+        "redacted"
+    ],
     "author": "Julie Sandburg",
     "license": "MIT",
     "devDependencies": {
         "@types/node": "^16.11.6",
-        "builtin-modules": "3.3.0",
         "esbuild": "0.17.3",
         "obsidian": "latest",
         "tslib": "2.4.0",
