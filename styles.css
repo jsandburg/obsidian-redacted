@@ -1,11 +1,20 @@
 /* Redacted — settings tab styles */
 
-.redact-preview-section {
-  margin-top: var(--size-4-4);
+/* Stack the preview row: label on top, sample below at full width. */
+.redact-preview-item {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--size-4-2);
+}
+
+.redact-preview-item .setting-item-control {
+  width: 100%;
+  justify-content: flex-start;
 }
 
 .redact-preview-code {
   display: block;
+  width: 100%;
   padding: var(--size-4-2) var(--size-4-3);
   background-color: var(--background-secondary);
   border-radius: var(--radius-s);

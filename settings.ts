@@ -199,7 +199,13 @@ export class RedactSettingTab extends PluginSettingTab {
             name: "Preview",
             searchable: false,
             render: (setting: Setting) => {
-              const previewEl = setting.settingEl.createEl("code", {
+              // Stack the preview under its label — the sample needs the full
+              // width of the row, not the narrow control column.
+              setting.settingEl.addClass("redact-preview-item");
+              // Empty first: render runs again on every update(), and without
+              // this each pass would append another (stale) preview element.
+              setting.controlEl.empty();
+              const previewEl = setting.controlEl.createEl("code", {
                 cls: "redact-preview-code",
               });
               const updatePreview = () => {
