@@ -1,9 +1,6 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type RedactPlugin from "./main";
-import { redactString } from "./main";
-
-/** Number of block characters used in fixed-length mode. */
-export const FIXED_LENGTH = 5;
+import { redactString, FIXED_LENGTH } from "./redact";
 
 export type RedactionStyle = "per-character" | "preserve-spaces" | "fixed-length";
 

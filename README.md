@@ -54,7 +54,7 @@ npm install
 npm run build
 ```
 
-This produces `main.js` from `main.ts` and `settings.ts` via esbuild.
+This produces `main.js` from the TypeScript sources via esbuild.
 
 ## License
 
