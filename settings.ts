@@ -49,6 +49,28 @@ export class RedactSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+  // The folder-list controls use indexed keys ("watchedFolders.0"); resolve
+  // them onto the array. Other keys fall through to the settings object.
+  getControlValue(key: string): unknown {
+    const match = /^watchedFolders\.(\d+)$/.exec(key);
+    if (match) return this.plugin.settings.watchedFolders[Number(match[1])];
+    return this.plugin.settings[key as keyof RedactPluginSettings];
+  }
+
+  async setControlValue(key: string, value: unknown): Promise<void> {
+    const match = /^watchedFolders\.(\d+)$/.exec(key);
+    if (match) {
+      // Store the raw trimmed value. Do NOT normalizePath() here:
+      // normalizePath("") returns "/", which would survive the blank filter
+      // and silently disable redaction everywhere. Paths are normalized at
+      // comparison time instead (see isInLimitedFolder).
+      this.plugin.settings.watchedFolders[Number(match[1])] = String(value).trim();
+    } else {
+      (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
+    }
+    await this.plugin.saveSettings();
+  }
+
   getSettingDefinitions(): SettingDefinitionItem[] {
     const folders = this.plugin.settings.watchedFolders || [];
     const isPreset = PRESET_CHARS.some(
@@ -83,24 +105,17 @@ export class RedactSettingTab extends PluginSettingTab {
           void this.plugin.saveSettings();
           this.update();
         },
-        items: folders.map((folder, index) => ({
+        items: folders.map((_folder, index) => ({
           name: `Folder ${index + 1}`,
           searchable: false,
-          render: (setting: Setting) => {
-            setting.addText((text) =>
-              text
-                .setPlaceholder("e.g. Private")
-                .setValue(folder)
-                .onChange(async (value) => {
-                  // Store the raw trimmed value. Do NOT normalizePath() here:
-                  // normalizePath("") returns "/", which would survive the
-                  // blank filter and silently disable redaction everywhere.
-                  // Paths are normalized at comparison time instead (see
-                  // isInLimitedFolder).
-                  this.plugin.settings.watchedFolders[index] = value.trim();
-                  await this.plugin.saveSettings();
-                })
-            );
+          // Persisted through getControlValue/setControlValue below, which
+          // map the indexed key onto the watchedFolders array. The folder
+          // control provides a vault-folder suggester, so users pick real
+          // folders instead of typing paths.
+          control: {
+            type: "folder" as const,
+            key: `watchedFolders.${index}`,
+            placeholder: "e.g. Private",
           },
         })),
       },
