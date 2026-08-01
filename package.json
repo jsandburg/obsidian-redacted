@@ -1,7 +1,7 @@
 {
     "name": "redacted",
     "version": "1.0.5",
-    "description": "Permanently replaces selected text with Full Block characters (█).",
+    "description": "Replaces selected text with Full Block (█) or other custom characters.",
     "main": "main.js",
     "scripts": {
         "dev": "node esbuild.config.mjs",
