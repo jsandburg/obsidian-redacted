@@ -72,12 +72,17 @@ export default class RedactPlugin extends Plugin {
     const folders = this.limitedFolders();
     if (folders.length === 0) return true; // no folders set → apply everywhere
 
+    // The vault root means "everywhere". It has to be caught before the
+    // prefix test below: normalizePath() strips slashes, so the root would
+    // otherwise be compared as "//" (or "/") and match no file at all,
+    // silently disabling redaction in the whole vault.
+    const normalized = folders.map((folder) => normalizePath(folder.trim()));
+    if (normalized.some((folder) => folder === "/" || folder === "")) return true;
+
     const activeFile = this.app.workspace.getActiveFile();
     if (!activeFile) return false;
 
-    return folders.some((folder) =>
-      activeFile.path.startsWith(normalizePath(folder.trim()) + "/")
-    );
+    return normalized.some((folder) => activeFile.path.startsWith(folder + "/"));
   }
 
   /** Shows the standard "outside limited folders" notice. */

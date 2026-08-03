@@ -29,7 +29,7 @@ My password is ███████ and my cat's name is Miso.
 
 ## Settings
 
-- **Limited folders** — restrict redaction to notes inside specific folders. Add a row with the list's **+** control, then pick a folder from the suggester (or type a path like `Notes/Sensitive`); remove one with its **✕**. Leave the list empty to allow redaction anywhere. Running the command outside a limited folder shows a notice instead of silently doing nothing.
+- **Limited folders** — restrict redaction to notes inside specific folders. Add a row with the list's **+** control, then pick a folder from the suggester (or type a path like `Notes/Sensitive`); remove one with its **✕**. Leave the list empty — or add the vault root (`/`) — to allow redaction anywhere. Running the command outside a limited folder shows a notice instead of silently doing nothing.
 - **Redaction style** — *Per character*, *Preserve spaces*, or *Fixed length* (see above). Note that *Preserve spaces* reveals word lengths, which makes short redacted phrases easier to guess.
 - **Redaction character** — the preset dropdown, plus *Custom…* for any single character.
 - **Preview** — a live before/after example showing your current redaction style and character in action.
