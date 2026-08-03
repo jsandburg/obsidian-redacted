@@ -1,6 +1,6 @@
 {
     "name": "redacted",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "description": "Replaces selected text with block or other custom characters to redact it in place.",
     "main": "main.js",
     "scripts": {
