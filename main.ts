@@ -1,4 +1,13 @@
-import { Editor, MarkdownView, Menu, Notice, Plugin, normalizePath } from "obsidian";
+import {
+  Editor,
+  MarkdownFileInfo,
+  MarkdownView,
+  Menu,
+  Notice,
+  Plugin,
+  TFile,
+  normalizePath,
+} from "obsidian";
 import { RedactPluginSettings, DEFAULT_SETTINGS, RedactSettingTab } from "./settings";
 import { redactString } from "./redact";
 
@@ -21,29 +30,32 @@ export default class RedactPlugin extends Plugin {
         new Notice("No active Markdown note found.");
         return;
       }
-      this.runRedactSelection(view.editor);
+      this.runRedactSelection(view.editor, view.file);
     });
 
     this.addCommand({
       id: "selection",
       name: "Redact selection",
-      editorCallback: (editor: Editor, _view: MarkdownView) => {
-        this.runRedactSelection(editor);
+      editorCallback: (editor: Editor, ctx: MarkdownView | MarkdownFileInfo) => {
+        this.runRedactSelection(editor, ctx.file);
       },
     });
 
     // Right-click menu entry, shown only when there is something to redact
     // and the note is inside a limited folder (or no folders are set).
     this.registerEvent(
-      this.app.workspace.on("editor-menu", (menu: Menu, editor: Editor) => {
-        if (!editor.getSelection() || !this.isInLimitedFolder()) return;
-        menu.addItem((item) =>
-          item
-            .setTitle("Redact selection")
-            .setIcon("eraser")
-            .onClick(() => this.runRedactSelection(editor))
-        );
-      })
+      this.app.workspace.on(
+        "editor-menu",
+        (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
+          if (!editor.getSelection() || !this.isInLimitedFolder(info.file)) return;
+          menu.addItem((item) =>
+            item
+              .setTitle("Redact selection")
+              .setIcon("eraser")
+              .onClick(() => this.runRedactSelection(editor, info.file))
+          );
+        }
+      )
     );
   }
 
@@ -62,13 +74,17 @@ export default class RedactPlugin extends Plugin {
   }
 
   /**
-   * True when redaction is allowed in the active file.
+   * True when redaction is allowed in `file`.
+   *
+   * The file is passed in by the caller — taken from the editor the command
+   * actually ran against — rather than read from workspace.getActiveFile(),
+   * which can name a different note when editors are open in pop-out windows.
    *
    * normalizePath() is applied here, at comparison time, so the stored value
    * can stay exactly as the user typed it. The trailing slash prevents
    * "Private" from matching "Private Archive".
    */
-  isInLimitedFolder(): boolean {
+  isInLimitedFolder(file: TFile | null): boolean {
     const folders = this.limitedFolders();
     if (folders.length === 0) return true; // no folders set → apply everywhere
 
@@ -79,10 +95,9 @@ export default class RedactPlugin extends Plugin {
     const normalized = folders.map((folder) => normalizePath(folder.trim()));
     if (normalized.some((folder) => folder === "/" || folder === "")) return true;
 
-    const activeFile = this.app.workspace.getActiveFile();
-    if (!activeFile) return false;
+    if (!file) return false;
 
-    return normalized.some((folder) => activeFile.path.startsWith(folder + "/"));
+    return normalized.some((folder) => file.path.startsWith(folder + "/"));
   }
 
   /** Shows the standard "outside limited folders" notice. */
@@ -101,8 +116,8 @@ export default class RedactPlugin extends Plugin {
    * Redacts the current selection in place. The selection is replaced
    * according to the configured redaction style (see redactString).
    */
-  private runRedactSelection(editor: Editor): void {
-    if (!this.isInLimitedFolder()) {
+  private runRedactSelection(editor: Editor, file: TFile | null): void {
+    if (!this.isInLimitedFolder(file)) {
       this.notifyOutsideLimitedFolders();
       return;
     }
