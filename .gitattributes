@@ -1,0 +1,2 @@
+# Build tooling — exclude from GitHub's language statistics
+esbuild.config.mjs -linguist-detectable
