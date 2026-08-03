@@ -1,7 +1,7 @@
 {
     "name": "redacted",
     "version": "1.0.5",
-    "description": "Replaces selected text with Full Block (█) or other custom characters.",
+    "description": "Replaces selected text with block or other custom characters to redact it in place.",
     "main": "main.js",
     "scripts": {
         "dev": "node esbuild.config.mjs",

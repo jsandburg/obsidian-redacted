@@ -3,7 +3,7 @@
     "name": "Redacted",
     "version": "1.0.5",
     "minAppVersion": "1.13.0",
-    "description": "Replaces selected text with Full Block (█) or other custom characters.",
+    "description": "Replaces selected text with block or other custom characters to redact it in place.",
     "author": "Julie Sandburg",
     "isDesktopOnly": false,
     "authorUrl": "https://github.com/jsandburg"
