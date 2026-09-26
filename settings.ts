@@ -1,4 +1,10 @@
-import { App, PluginSettingTab, Setting, SettingDefinitionItem } from "obsidian";
+import {
+  App,
+  PluginSettingTab,
+  Setting,
+  SettingDefinitionItem,
+  normalizePath,
+} from "obsidian";
 import type RedactPlugin from "./main";
 import { redactString, blockCharError, FIXED_LENGTH } from "./redact";
 
@@ -118,6 +124,15 @@ export class RedactSettingTab extends PluginSettingTab {
             type: "folder" as const,
             key: `watchedFolders.${index}`,
             placeholder: "e.g. Private",
+            // A typo, or a folder renamed or deleted later, would silently
+            // turn redaction off there — flag it. Blank rows are ignored.
+            validate: (value: string) => {
+              const folder = value.trim();
+              if (folder && !this.app.vault.getFolderByPath(normalizePath(folder))) {
+                return `No folder "${folder}" in this vault.`;
+              }
+              return undefined;
+            },
           },
         })),
       },
