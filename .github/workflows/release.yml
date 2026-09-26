@@ -29,9 +29,10 @@ jobs:
             exit 1
           fi
 
-      - name: Build
+      - name: Lint and build
         run: |
           npm ci
+          npm run lint
           npm run build
 
       - name: Attest build provenance

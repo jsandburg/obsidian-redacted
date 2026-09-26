@@ -16,7 +16,7 @@ import { redactString } from "./redact";
 // ---------------------------------------------------------------------------
 
 export default class RedactPlugin extends Plugin {
-  settings: RedactPluginSettings;
+  settings!: RedactPluginSettings;
   onSettingsChange: (() => void) | null = null;
 
   async onload() {
