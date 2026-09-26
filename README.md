@@ -21,17 +21,18 @@ My password is ███████ and my cat's name is Miso.
   - *Per character* (default) — one block per character, so the redaction is one-to-one: `secret name` → `███████████`
   - *Preserve spaces* — spaces stay visible so word boundaries remain: `secret name` → `██████ ████`
   - *Fixed length* — each line becomes a constant run of 5 blocks, so no word or line length leaks: `secret name` → `█████`
-- **Choice of redaction character** — pick from a dropdown of presets (█ ░ ▒ ▓ ■ ● ★ ✦), or choose *Custom…* and type or paste any single character (✱, ♥, an emoji…).
+- **Choice of redaction character** — pick from a dropdown of presets (█ ░ ▒ ▓ ■ ● ★ ✦ ✱), or choose *Custom…* and type or paste any single character (♥, ☀, an emoji…).
 - **Limited folders** — optionally restrict redaction to specific folders, picked from a vault-folder suggester, so the command is only active where it's meant to be used.
 - **Live preview** — the settings tab shows a before/after example of your current style and character.
+- **Multiple selections** — hold **Option** (Alt on Windows/Linux) and drag to add more selections, then redact them all at once. Each is redacted to its own length, in a single undoable step.
 - **Shape-preserving** — multi-line selections keep their line breaks in every style, and blank lines stay blank.
 - **Searchable settings** — built on Obsidian's declarative settings API, so every option shows up in the global settings search.
 
 ## Settings
 
-- **Limited folders** — restrict redaction to notes inside specific folders. Add a row with the list's **+** control, then pick a folder from the suggester (or type a path like `Notes/Sensitive`); remove one with its **✕**. Leave the list empty — or add the vault root (`/`) — to allow redaction anywhere. Running the command outside a limited folder shows a notice instead of silently doing nothing.
+- **Limited folders** — restrict redaction to notes inside specific folders. Add a row with the list's **+** control, then pick a folder from the suggester (or type a path like `Notes/Sensitive`); remove one with its **✕**. Leave the list empty — or add the vault root (`/`) — to allow redaction anywhere. Renaming or moving a limited folder updates the list automatically; a folder that doesn't exist in the vault (a typo, or one deleted since) is flagged with an inline warning. Running the command outside a limited folder shows a notice instead of silently doing nothing.
 - **Redaction style** — *Per character*, *Preserve spaces*, or *Fixed length* (see above). Note that *Preserve spaces* reveals word lengths, which makes short redacted phrases easier to guess.
-- **Redaction character** — the preset dropdown, plus *Custom…* for any single character.
+- **Redaction character** — the preset dropdown, plus *Custom…* for any single character. Blank or invisible characters and Markdown symbols (ASCII punctuation such as `*` `-` `#` `~`) aren't accepted: the first would make redacted text look like empty space, the second can turn it into formatting — a divider, a heading, or a code block. For an asterisk look, use the ✱ *Heavy asterisk* preset instead of `*`.
 - **Preview** — a live before/after example showing your current redaction style and character in action.
 
 ## Important: what "permanent" does and doesn't mean
@@ -47,8 +48,9 @@ Treat Redacted as a presentation tool for notes you share or publish, not as a s
 
 ## Edge cases worth knowing
 
-- **Complex emoji**: characters made of multiple code points joined together (like family emoji 👨‍👩‍👧) count as several characters, so one visible glyph may become several blocks. Simple emoji and accented characters count correctly as one.
+- **Emoji and accents**: characters are counted as you see them, so an emoji built from several code points (👨‍👩‍👧, 👍🏽, a flag) or a letter with a combining accent becomes exactly one block.
 - **Multi-line selections**: line breaks are preserved so redacted text keeps its shape, and blank lines stay blank.
+- **Reading view**: redaction only works in editing view, where you can see what's selected.
 
 ## Installation
 
@@ -69,7 +71,15 @@ npm install
 npm run build
 ```
 
-This typechecks with `tsc` and bundles the sources into `main.js` via esbuild.
+This typechecks with `tsc` and bundles the sources into `main.js` via esbuild. `npm run dev` rebuilds `main.js` on every change instead.
+
+To lint with [`eslint-plugin-obsidianmd`](https://github.com/obsidianmd/eslint-plugin) — the same rules the community plugin review uses:
+
+```
+npm run lint
+```
+
+To release, bump the version in `manifest.json`, `package.json`, and `versions.json`, then push a tag that matches it exactly (e.g. `1.0.8`, no `v` prefix). The release workflow lints, builds, and publishes `main.js`, `manifest.json`, and `styles.css` with build provenance attestations.
 
 ## License
 
