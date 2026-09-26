@@ -31,6 +31,13 @@ export default class RedactPlugin extends Plugin {
         new Notice("No active Markdown note found.");
         return;
       }
+      // In reading view the editor still holds its last selection, but the
+      // user can't see it — don't redact text they didn't knowingly select.
+      // (The command is hidden in reading view by editorCallback already.)
+      if (view.getMode() !== "source") {
+        new Notice("Switch to editing view to redact a selection.");
+        return;
+      }
       this.runRedactSelection(view.editor, view.file);
     });
 
