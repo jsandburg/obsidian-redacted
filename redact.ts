@@ -49,9 +49,8 @@ export function blockCharError(char: string): string | undefined {
  *
  * Blank lines stay blank in every style.
  *
- * Character counting uses the spread operator ([...str]) so that multi-byte
- * Unicode characters (emoji, accented letters, etc.) count as one character
- * each rather than two surrogate halves.
+ * Characters are counted as graphemes (see splitGraphemes), so each visible
+ * character becomes exactly one block.
  */
 export function redactString(input: string, settings: RedactPluginSettings): string {
   const { blockChar, redactionStyle } = settings;
@@ -62,8 +61,8 @@ export function redactString(input: string, settings: RedactPluginSettings): str
       if (line.length === 0) return line; // blank lines stay blank
       if (redactionStyle === "fixed-length") return blockChar.repeat(FIXED_LENGTH);
       return redactionStyle === "preserve-spaces"
-        ? [...line].map((ch) => (ch === " " ? " " : blockChar)).join("")
-        : blockChar.repeat([...line].length);
+        ? splitGraphemes(line).map((ch) => (ch === " " ? " " : blockChar)).join("")
+        : blockChar.repeat(splitGraphemes(line).length);
     })
     .join("\n");
 }
