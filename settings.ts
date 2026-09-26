@@ -1,6 +1,12 @@
-import { App, PluginSettingTab, Setting, SettingDefinitionItem } from "obsidian";
+import {
+  App,
+  PluginSettingTab,
+  Setting,
+  SettingDefinitionItem,
+  normalizePath,
+} from "obsidian";
 import type RedactPlugin from "./main";
-import { redactString, FIXED_LENGTH } from "./redact";
+import { redactString, blockCharError, FIXED_LENGTH } from "./redact";
 
 export type RedactionStyle = "per-character" | "preserve-spaces" | "fixed-length";
 
@@ -37,6 +43,7 @@ const PRESET_CHARS: [string, string][] = [
   ["●", "● Black circle"],
   ["★", "★ Black star"],
   ["✦", "✦ Four-pointed star"],
+  ["✱", "✱ Heavy asterisk"],
 ];
 
 export class RedactSettingTab extends PluginSettingTab {
@@ -70,6 +77,7 @@ export class RedactSettingTab extends PluginSettingTab {
       (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
     }
     await this.plugin.saveSettings();
+    if (this.plugin.onSettingsChange) this.plugin.onSettingsChange();
   }
 
   getSettingDefinitions(): SettingDefinitionItem[] {
@@ -117,6 +125,15 @@ export class RedactSettingTab extends PluginSettingTab {
             type: "folder" as const,
             key: `watchedFolders.${index}`,
             placeholder: "e.g. Private",
+            // A typo, or a folder renamed or deleted later, would silently
+            // turn redaction off there — flag it. Blank rows are ignored.
+            validate: (value: string) => {
+              const folder = value.trim();
+              if (folder && !this.app.vault.getFolderByPath(normalizePath(folder))) {
+                return `No folder "${folder}" in this vault.`;
+              }
+              return undefined;
+            },
           },
         })),
       },
@@ -176,23 +193,16 @@ export class RedactSettingTab extends PluginSettingTab {
           },
           {
             name: "Custom character",
-            desc: "Type or paste any single character (e.g. ✱, ♥, x).",
+            desc: "Type or paste any single character (e.g. ♥, ☀, x).",
             visible: () => this.customMode || !isPreset,
-            render: (setting: Setting) => {
-              setting.addText((text) =>
-                text
-                  .setPlaceholder("█")
-                  .setValue(this.plugin.settings.blockChar)
-                  .onChange(async (value) => {
-                    // Allow only a single character; take the first if more
-                    // are typed. Spread handles multi-byte Unicode correctly.
-                    const char = [...value][0];
-                    if (!char) return;
-                    this.plugin.settings.blockChar = char;
-                    await this.plugin.saveSettings();
-                    if (this.plugin.onSettingsChange) this.plugin.onSettingsChange();
-                  })
-              );
+            // Persisted through setControlValue. The framework shows the
+            // validate message inline and only saves values that pass; it
+            // also flags an invalid value saved by an earlier version.
+            control: {
+              type: "text" as const,
+              key: "blockChar",
+              placeholder: "█",
+              validate: blockCharError,
             },
           },
           {

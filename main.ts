@@ -1,11 +1,13 @@
 import {
   Editor,
+  EditorChange,
   MarkdownFileInfo,
   MarkdownView,
   Menu,
   Notice,
   Plugin,
   TFile,
+  TFolder,
   normalizePath,
 } from "obsidian";
 import { RedactPluginSettings, DEFAULT_SETTINGS, RedactSettingTab } from "./settings";
@@ -16,7 +18,7 @@ import { redactString } from "./redact";
 // ---------------------------------------------------------------------------
 
 export default class RedactPlugin extends Plugin {
-  settings: RedactPluginSettings;
+  settings!: RedactPluginSettings;
   onSettingsChange: (() => void) | null = null;
 
   async onload() {
@@ -28,6 +30,13 @@ export default class RedactPlugin extends Plugin {
       const view = this.app.workspace.getActiveViewOfType(MarkdownView);
       if (!view) {
         new Notice("No active Markdown note found.");
+        return;
+      }
+      // In reading view the editor still holds its last selection, but the
+      // user can't see it — don't redact text they didn't knowingly select.
+      // (The command is hidden in reading view by editorCallback already.)
+      if (view.getMode() !== "source") {
+        new Notice("Switch to editing view to redact a selection.");
         return;
       }
       this.runRedactSelection(view.editor, view.file);
@@ -47,7 +56,11 @@ export default class RedactPlugin extends Plugin {
       this.app.workspace.on(
         "editor-menu",
         (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
-          if (!editor.getSelection() || !this.isInLimitedFolder(info.file)) return;
+          if (
+            this.redactionChanges(editor).length === 0 ||
+            !this.isInLimitedFolder(info.file)
+          )
+            return;
           menu.addItem((item) =>
             item
               .setTitle("Redact selection")
@@ -56,6 +69,14 @@ export default class RedactPlugin extends Plugin {
           );
         }
       )
+    );
+
+    // Keep limited folders pointing at the same folders when those are
+    // renamed or moved — otherwise redaction would silently stop there.
+    this.registerEvent(
+      this.app.vault.on("rename", (file, oldPath) => {
+        if (file instanceof TFolder) void this.followFolderRename(oldPath, file.path);
+      })
     );
   }
 
@@ -100,6 +121,22 @@ export default class RedactPlugin extends Plugin {
     return normalized.some((folder) => file.path.startsWith(folder + "/"));
   }
 
+  /**
+   * Rewrites limited folders at or under `oldPath` to sit under `newPath` —
+   * the renamed folder itself, and entries inside it ("Work/Private" when
+   * "Work" is renamed). Repeating it for the same rename changes nothing.
+   */
+  private async followFolderRename(oldPath: string, newPath: string): Promise<void> {
+    let changed = false;
+    this.settings.watchedFolders = this.settings.watchedFolders.map((entry) => {
+      const folder = normalizePath(entry.trim());
+      if (folder !== oldPath && !folder.startsWith(oldPath + "/")) return entry;
+      changed = true;
+      return newPath + folder.slice(oldPath.length);
+    });
+    if (changed) await this.saveSettings();
+  }
+
   /** Shows the standard "outside limited folders" notice. */
   private notifyOutsideLimitedFolders(): void {
     const folderList = this.limitedFolders()
@@ -113,8 +150,33 @@ export default class RedactPlugin extends Plugin {
   // -------------------------------------------------------------------------
 
   /**
-   * Redacts the current selection in place. The selection is replaced
-   * according to the configured redaction style (see redactString).
+   * One change per non-empty selection, replacing it with its redacted form.
+   *
+   * Each range is read and replaced on its own because, with multiple
+   * cursors, editor.getSelection() returns only the main selection while
+   * replaceSelection() writes the same text over every selection — which
+   * would give every range the main one's length and insert blocks at bare
+   * cursors.
+   */
+  private redactionChanges(editor: Editor): EditorChange[] {
+    const changes: EditorChange[] = [];
+    for (const { anchor, head } of editor.listSelections()) {
+      const [from, to] =
+        editor.posToOffset(anchor) <= editor.posToOffset(head)
+          ? [anchor, head]
+          : [head, anchor];
+      const selected = editor.getRange(from, to);
+      if (selected) {
+        changes.push({ from, to, text: redactString(selected, this.settings) });
+      }
+    }
+    return changes;
+  }
+
+  /**
+   * Redacts every selection in place, in a single undoable transaction.
+   * Each selection is replaced according to the configured redaction style
+   * (see redactString).
    */
   private runRedactSelection(editor: Editor, file: TFile | null): void {
     if (!this.isInLimitedFolder(file)) {
@@ -122,14 +184,14 @@ export default class RedactPlugin extends Plugin {
       return;
     }
 
-    const selected = editor.getSelection();
+    const changes = this.redactionChanges(editor);
 
-    if (!selected) {
+    if (changes.length === 0) {
       new Notice("No text selected.");
       return;
     }
 
-    editor.replaceSelection(redactString(selected, this.settings));
+    editor.transaction({ changes });
     new Notice("Redacted selection.");
   }
 
