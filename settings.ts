@@ -43,6 +43,7 @@ const PRESET_CHARS: [string, string][] = [
   ["●", "● Black circle"],
   ["★", "★ Black star"],
   ["✦", "✦ Four-pointed star"],
+  ["✱", "✱ Heavy asterisk"],
 ];
 
 export class RedactSettingTab extends PluginSettingTab {
@@ -192,7 +193,7 @@ export class RedactSettingTab extends PluginSettingTab {
           },
           {
             name: "Custom character",
-            desc: "Type or paste any single character (e.g. ✱, ♥, x).",
+            desc: "Type or paste any single character (e.g. ♥, ☀, x).",
             visible: () => this.customMode || !isPreset,
             // Persisted through setControlValue. The framework shows the
             // validate message inline and only saves values that pass; it

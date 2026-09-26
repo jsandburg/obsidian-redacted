@@ -32,7 +32,7 @@ export function blockCharError(char: string): string | undefined {
   // or headings, ` and ~ open code blocks, and %% or $$ can hide or swallow
   // the rest of the note.
   if (/^[\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E]$/.test(char)) {
-    return "Markdown symbols like * - # ~ can turn redacted text into formatting. Try a lookalike such as ✱ instead.";
+    return "Markdown symbols like * - # ~ can turn redacted text into formatting. Try a lookalike instead — ✱ Heavy asterisk is in the list above.";
   }
   return undefined;
 }
