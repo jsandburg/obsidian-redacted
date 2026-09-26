@@ -1,5 +1,6 @@
 import {
   Editor,
+  EditorChange,
   MarkdownFileInfo,
   MarkdownView,
   Menu,
@@ -47,7 +48,11 @@ export default class RedactPlugin extends Plugin {
       this.app.workspace.on(
         "editor-menu",
         (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
-          if (!editor.getSelection() || !this.isInLimitedFolder(info.file)) return;
+          if (
+            this.redactionChanges(editor).length === 0 ||
+            !this.isInLimitedFolder(info.file)
+          )
+            return;
           menu.addItem((item) =>
             item
               .setTitle("Redact selection")
@@ -113,8 +118,33 @@ export default class RedactPlugin extends Plugin {
   // -------------------------------------------------------------------------
 
   /**
-   * Redacts the current selection in place. The selection is replaced
-   * according to the configured redaction style (see redactString).
+   * One change per non-empty selection, replacing it with its redacted form.
+   *
+   * Each range is read and replaced on its own because, with multiple
+   * cursors, editor.getSelection() returns only the main selection while
+   * replaceSelection() writes the same text over every selection — which
+   * would give every range the main one's length and insert blocks at bare
+   * cursors.
+   */
+  private redactionChanges(editor: Editor): EditorChange[] {
+    const changes: EditorChange[] = [];
+    for (const { anchor, head } of editor.listSelections()) {
+      const [from, to] =
+        editor.posToOffset(anchor) <= editor.posToOffset(head)
+          ? [anchor, head]
+          : [head, anchor];
+      const selected = editor.getRange(from, to);
+      if (selected) {
+        changes.push({ from, to, text: redactString(selected, this.settings) });
+      }
+    }
+    return changes;
+  }
+
+  /**
+   * Redacts every selection in place, in a single undoable transaction.
+   * Each selection is replaced according to the configured redaction style
+   * (see redactString).
    */
   private runRedactSelection(editor: Editor, file: TFile | null): void {
     if (!this.isInLimitedFolder(file)) {
@@ -122,14 +152,14 @@ export default class RedactPlugin extends Plugin {
       return;
     }
 
-    const selected = editor.getSelection();
+    const changes = this.redactionChanges(editor);
 
-    if (!selected) {
+    if (changes.length === 0) {
       new Notice("No text selected.");
       return;
     }
 
-    editor.replaceSelection(redactString(selected, this.settings));
+    editor.transaction({ changes });
     new Notice("Redacted selection.");
   }
 
