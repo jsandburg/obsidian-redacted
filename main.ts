@@ -7,6 +7,7 @@ import {
   Notice,
   Plugin,
   TFile,
+  TFolder,
   normalizePath,
 } from "obsidian";
 import { RedactPluginSettings, DEFAULT_SETTINGS, RedactSettingTab } from "./settings";
@@ -69,6 +70,14 @@ export default class RedactPlugin extends Plugin {
         }
       )
     );
+
+    // Keep limited folders pointing at the same folders when those are
+    // renamed or moved — otherwise redaction would silently stop there.
+    this.registerEvent(
+      this.app.vault.on("rename", (file, oldPath) => {
+        if (file instanceof TFolder) void this.followFolderRename(oldPath, file.path);
+      })
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -110,6 +119,22 @@ export default class RedactPlugin extends Plugin {
     if (!file) return false;
 
     return normalized.some((folder) => file.path.startsWith(folder + "/"));
+  }
+
+  /**
+   * Rewrites limited folders at or under `oldPath` to sit under `newPath` —
+   * the renamed folder itself, and entries inside it ("Work/Private" when
+   * "Work" is renamed). Repeating it for the same rename changes nothing.
+   */
+  private async followFolderRename(oldPath: string, newPath: string): Promise<void> {
+    let changed = false;
+    this.settings.watchedFolders = this.settings.watchedFolders.map((entry) => {
+      const folder = normalizePath(entry.trim());
+      if (folder !== oldPath && !folder.startsWith(oldPath + "/")) return entry;
+      changed = true;
+      return newPath + folder.slice(oldPath.length);
+    });
+    if (changed) await this.saveSettings();
   }
 
   /** Shows the standard "outside limited folders" notice. */
