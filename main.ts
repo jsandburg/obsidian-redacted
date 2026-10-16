@@ -51,14 +51,14 @@ export default class RedactPlugin extends Plugin {
     });
 
     // Right-click menu entry, shown only when there is something to redact
-    // and the note is inside a limited folder (or no folders are set).
+    // and redaction is allowed in the note (see isRedactionAllowed).
     this.registerEvent(
       this.app.workspace.on(
         "editor-menu",
         (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
           if (
             this.redactionChanges(editor).length === 0 ||
-            !this.isInLimitedFolder(info.file)
+            !this.isRedactionAllowed(info.file)
           )
             return;
           menu.addItem((item) =>
@@ -71,7 +71,7 @@ export default class RedactPlugin extends Plugin {
       )
     );
 
-    // Keep limited folders pointing at the same folders when those are
+    // Keep limited and excluded folders pointing at the same folders when those are
     // renamed or moved — otherwise redaction would silently stop there.
     this.registerEvent(
       this.app.vault.on("rename", (file, oldPath) => {
@@ -81,7 +81,7 @@ export default class RedactPlugin extends Plugin {
   }
 
   // -------------------------------------------------------------------------
-  // Folder scoping ("Limited folders")
+  // Folder scoping ("Limited folders" and "Excluded folders")
   // -------------------------------------------------------------------------
 
   /**
@@ -121,19 +121,40 @@ export default class RedactPlugin extends Plugin {
     return normalized.some((folder) => file.path.startsWith(folder + "/"));
   }
 
+  /** True when `file` is inside any of the excluded folders. */
+  isInExcludedFolder(file: TFile | null): boolean {
+    if (!file) return false;
+    return this.settings.excludedFolders
+      .filter((f) => f.trim())
+      .some((folder) => file.path.startsWith(normalizePath(folder.trim()) + "/"));
+  }
+
   /**
-   * Rewrites limited folders at or under `oldPath` to sit under `newPath` —
-   * the renamed folder itself, and entries inside it ("Work/Private" when
-   * "Work" is renamed). Repeating it for the same rename changes nothing.
+   * True when redaction is allowed in `file`: it is in a limited folder (or
+   * none are set) and not in an excluded folder. Excluded folders win, so a
+   * subfolder of a limited folder can be excluded.
+   */
+  isRedactionAllowed(file: TFile | null): boolean {
+    return this.isInLimitedFolder(file) && !this.isInExcludedFolder(file);
+  }
+
+  /**
+   * Rewrites limited and excluded folders at or under `oldPath` to sit under
+   * `newPath` — the renamed folder itself, and entries inside it
+   * ("Work/Private" when "Work" is renamed). Repeating it for the same rename
+   * changes nothing.
    */
   private async followFolderRename(oldPath: string, newPath: string): Promise<void> {
     let changed = false;
-    this.settings.watchedFolders = this.settings.watchedFolders.map((entry) => {
-      const folder = normalizePath(entry.trim());
-      if (folder !== oldPath && !folder.startsWith(oldPath + "/")) return entry;
-      changed = true;
-      return newPath + folder.slice(oldPath.length);
-    });
+    const update = (folders: string[]) =>
+      folders.map((entry) => {
+        const folder = normalizePath(entry.trim());
+        if (folder !== oldPath && !folder.startsWith(oldPath + "/")) return entry;
+        changed = true;
+        return newPath + folder.slice(oldPath.length);
+      });
+    this.settings.watchedFolders = update(this.settings.watchedFolders);
+    this.settings.excludedFolders = update(this.settings.excludedFolders);
     if (changed) await this.saveSettings();
   }
 
@@ -179,6 +200,10 @@ export default class RedactPlugin extends Plugin {
    * (see redactString).
    */
   private runRedactSelection(editor: Editor, file: TFile | null): void {
+    if (this.isInExcludedFolder(file)) {
+      new Notice("Redacted is turned off in this folder.");
+      return;
+    }
     if (!this.isInLimitedFolder(file)) {
       this.notifyOutsideLimitedFolders();
       return;
@@ -201,7 +226,8 @@ export default class RedactPlugin extends Plugin {
 
   async loadSettings() {
     const data = (await this.loadData()) as Partial<RedactPluginSettings> | null;
-    this.settings = { ...DEFAULT_SETTINGS, ...data };
+    // Copy the default arrays so adding a folder never mutates DEFAULT_SETTINGS.
+    this.settings = { ...DEFAULT_SETTINGS, watchedFolders: [], excludedFolders: [], ...data };
   }
 
   async saveSettings() {

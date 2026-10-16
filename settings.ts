@@ -1,8 +1,11 @@
 import {
   App,
+  FuzzySuggestModal,
   PluginSettingTab,
   Setting,
   SettingDefinitionItem,
+  SettingDefinitionList,
+  TFolder,
   normalizePath,
 } from "obsidian";
 import type RedactPlugin from "./main";
@@ -26,12 +29,31 @@ export interface RedactPluginSettings {
    * existing folder lists.
    */
   watchedFolders: string[];
+  /** Redaction is off in these, even inside a limited folder. */
+  excludedFolders: string[];
 }
+
+/** The settings keys that hold a list of folders. */
+type FolderListKey = "watchedFolders" | "excludedFolders";
 
 export const DEFAULT_SETTINGS: RedactPluginSettings = {
   blockChar: "█",
   redactionStyle: "per-character",
   watchedFolders: [],
+  excludedFolders: [],
+};
+
+/** The "Redaction style" description for each style, shown for the selected one. */
+const STYLE_DESCS: Record<RedactionStyle, string> = {
+  "per-character":
+    "Replaces each character with a block, keeping line breaks. The " +
+    "redaction is one-to-one, so it shows how long the original text was.",
+  "preserve-spaces":
+    "Like per character, but spaces stay visible so word boundaries remain " +
+    "— note this reveals word lengths, which makes short phrases easier to guess.",
+  "fixed-length":
+    `Replaces each line with ${FIXED_LENGTH} blocks, so no word or line ` +
+    "lengths leak.",
 };
 
 const PRESET_CHARS: [string, string][] = [
@@ -46,6 +68,35 @@ const PRESET_CHARS: [string, string][] = [
   ["✱", "✱ Heavy asterisk"],
 ];
 
+/** Fuzzy picker over the vault's folders, for adding a folder to a list. */
+class FolderPickerModal extends FuzzySuggestModal<TFolder> {
+  constructor(
+    app: App,
+    placeholder: string,
+    private exclude: string[],
+    private onPick: (folder: TFolder) => void
+  ) {
+    super(app);
+    this.setPlaceholder(placeholder);
+  }
+
+  getItems(): TFolder[] {
+    // The vault root isn't offered: limiting to it is what an empty limited
+    // list already does, and excluding it would turn redaction off everywhere.
+    return this.app.vault
+      .getAllFolders(false)
+      .filter((folder) => !this.exclude.includes(folder.path));
+  }
+
+  getItemText(folder: TFolder): string {
+    return folder.path;
+  }
+
+  onChooseItem(folder: TFolder): void {
+    this.onPick(folder);
+  }
+}
+
 export class RedactSettingTab extends PluginSettingTab {
   plugin: RedactPlugin;
   /** True while the "Custom…" redaction-character option is selected. */
@@ -56,32 +107,17 @@ export class RedactSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
-  // The folder-list controls use indexed keys ("watchedFolders.0"); resolve
-  // them onto the array. Other keys fall through to the settings object.
   getControlValue(key: string): unknown {
-    const match = /^watchedFolders\.(\d+)$/.exec(key);
-    if (match) return this.plugin.settings.watchedFolders[Number(match[1])];
     return this.plugin.settings[key as keyof RedactPluginSettings];
   }
 
   async setControlValue(key: string, value: unknown): Promise<void> {
-    const match = /^watchedFolders\.(\d+)$/.exec(key);
-    if (match) {
-      // Store the raw trimmed value. Do NOT normalizePath() here:
-      // normalizePath("") returns "/", which would survive the blank filter
-      // and silently disable redaction everywhere. Paths are normalized at
-      // comparison time instead (see isInLimitedFolder).
-      this.plugin.settings.watchedFolders[Number(match[1])] =
-        typeof value === "string" ? value.trim() : "";
-    } else {
-      (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
-    }
+    (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
     await this.plugin.saveSettings();
     if (this.plugin.onSettingsChange) this.plugin.onSettingsChange();
   }
 
   getSettingDefinitions(): SettingDefinitionItem[] {
-    const folders = this.plugin.settings.watchedFolders || [];
     const isPreset = PRESET_CHARS.some(
       ([ch]) => ch === this.plugin.settings.blockChar
     );
@@ -94,61 +130,29 @@ export class RedactSettingTab extends PluginSettingTab {
           "→ Redact selection) to permanently replace it with block characters.",
         searchable: false,
       },
-      {
-        type: "list",
+      this.folderList({
+        key: "watchedFolders",
         heading: "Limited folders",
         emptyState:
           "No folders listed — redaction is available in every note. Add a " +
-          "folder (exactly as it appears in your vault, e.g. \"Private\" or " +
-          "\"Notes/Sensitive\") to allow redaction only there.",
-        addItem: {
-          name: "Add folder",
-          action: () => {
-            this.plugin.settings.watchedFolders.push("");
-            void this.plugin.saveSettings();
-            this.update();
-          },
-        },
-        onDelete: (index) => {
-          this.plugin.settings.watchedFolders.splice(index, 1);
-          void this.plugin.saveSettings();
-          this.update();
-        },
-        items: folders.map((_folder, index) => ({
-          name: `Folder ${index + 1}`,
-          searchable: false,
-          // Persisted through getControlValue/setControlValue below, which
-          // map the indexed key onto the watchedFolders array. The folder
-          // control provides a vault-folder suggester, so users pick real
-          // folders instead of typing paths.
-          control: {
-            type: "folder" as const,
-            key: `watchedFolders.${index}`,
-            placeholder: "e.g. Private",
-            // A typo, or a folder renamed or deleted later, would silently
-            // turn redaction off there — flag it. Blank rows are ignored.
-            validate: (value: string) => {
-              const folder = value.trim();
-              if (folder && !this.app.vault.getFolderByPath(normalizePath(folder))) {
-                return `No folder "${folder}" in this vault.`;
-              }
-              return undefined;
-            },
-          },
-        })),
-      },
+          "folder to allow redaction only there.",
+        placeholder: "Pick a folder to limit redaction to",
+      }),
+      this.folderList({
+        key: "excludedFolders",
+        heading: "Excluded folders",
+        emptyState:
+          "No folders excluded. Add a folder to turn redaction off in it, " +
+          "even when it's inside a limited folder.",
+        placeholder: "Pick a folder to exclude",
+      }),
       {
         type: "group",
         heading: "Appearance",
         items: [
           {
             name: "Redaction style",
-            desc:
-              "Per character replaces each character with a block (newlines " +
-              "kept). Preserve spaces also keeps spaces, so word boundaries " +
-              "stay visible — note this reveals word lengths. Fixed length " +
-              `replaces each line with ${FIXED_LENGTH} blocks, so line ` +
-              "lengths don't leak.",
+            desc: STYLE_DESCS[this.plugin.settings.redactionStyle],
             render: (setting: Setting) => {
               setting.addDropdown((dropdown) =>
                 dropdown
@@ -158,6 +162,7 @@ export class RedactSettingTab extends PluginSettingTab {
                   .setValue(this.plugin.settings.redactionStyle)
                   .onChange(async (value) => {
                     this.plugin.settings.redactionStyle = value as RedactionStyle;
+                    setting.setDesc(STYLE_DESCS[value as RedactionStyle]);
                     await this.plugin.saveSettings();
                     if (this.plugin.onSettingsChange) this.plugin.onSettingsChange();
                   })
@@ -236,5 +241,55 @@ export class RedactSettingTab extends PluginSettingTab {
         ],
       },
     ];
+  }
+
+  /**
+   * A list of vault folders stored under the given settings key. Each row is
+   * the folder's path; the add button opens a picker of the vault's folders.
+   */
+  private folderList(options: {
+    key: FolderListKey;
+    heading: string;
+    emptyState: string;
+    /** Shown in the folder picker's search box. */
+    placeholder: string;
+  }): SettingDefinitionList {
+    // Read the array from settings each time: a folder rename replaces it
+    // (see followFolderRename), so a captured copy would go stale.
+    const folders = () => this.plugin.settings[options.key];
+    const changed = () => {
+      void this.plugin.saveSettings();
+      this.update();
+    };
+
+    return {
+      type: "list",
+      heading: options.heading,
+      emptyState: options.emptyState,
+      addItem: {
+        name: "Add folder",
+        action: () => {
+          new FolderPickerModal(this.app, options.placeholder, folders(), (folder) => {
+            folders().push(folder.path);
+            changed();
+          }).open();
+        },
+      },
+      onDelete: (index) => {
+        folders().splice(index, 1);
+        changed();
+      },
+      // Plain rows named by path. A folder deleted since it was picked (or
+      // a hand-typed entry from an earlier version) would silently stop
+      // applying — flag it. Renames are followed in main.ts.
+      items: folders().map((folder) => ({
+        name: folder || "(blank)",
+        desc:
+          folder.trim() && !this.app.vault.getFolderByPath(normalizePath(folder.trim()))
+            ? "No such folder in this vault."
+            : undefined,
+        searchable: false,
+      })),
+    };
   }
 }
