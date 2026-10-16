@@ -46,9 +46,8 @@ export const DEFAULT_SETTINGS: RedactPluginSettings = {
 /** The "Redaction style" description for each style, shown for the selected one. */
 const STYLE_DESCS: Record<RedactionStyle, string> = {
   "per-character":
-    "Replaces each character with the redaction character, keeping line " +
-    "breaks. The redaction is one-to-one, so it shows how long the original " +
-    "text was.",
+    "Replaces each character, keeping line breaks. The redaction is " +
+    "one-to-one, so it shows how long the original text was.",
   "preserve-spaces":
     "Like per character, but spaces stay visible so word boundaries remain " +
     "— note this reveals word lengths, which makes short phrases easier to guess.",
