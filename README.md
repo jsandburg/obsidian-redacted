@@ -1,6 +1,6 @@
 # Redacted
 
-An [Obsidian](https://obsidian.md) plugin that permanently replaces selected text with block characters — the classic declassified-document look, right in your notes.
+An [Obsidian](https://obsidian.md) plugin that permanently replaces selected text with block characters, or any character you choose — the classic declassified-document look, right in your notes.
 
 Select some text and run **Redact selection** — from the command palette, the right-click menu, or the eraser ribbon icon — and the selection is immediately replaced:
 
@@ -18,9 +18,9 @@ My password is ███████ and my cat's name is Miso.
 
 - **Three ways to redact** — command palette, right-click context menu (appears whenever text is selected), or the eraser ribbon icon.
 - **Three redaction styles**:
-  - *Per character* (default) — one block per character, so the redaction is one-to-one: `secret name` → `███████████`
+  - *Per character* (default) — one redaction character per character, so the redaction is one-to-one: `secret name` → `███████████`
   - *Preserve spaces* — spaces stay visible so word boundaries remain: `secret name` → `██████ ████`
-  - *Fixed length* — each line becomes a constant run of 5 blocks, so no word or line length leaks: `secret name` → `█████`
+  - *Fixed length* — each line becomes a constant run of 5 redaction characters, so no word or line length leaks: `secret name` → `█████`
 - **Choice of redaction character** — pick from a dropdown of presets (█ ░ ▒ ▓ ■ ● ★ ✦ ✱), or choose *Custom…* and type or paste any single character (♥, ☀, an emoji…).
 - **Limited folders** — optionally restrict redaction to specific folders, picked from a vault-folder picker, so the command is only active where it's meant to be used.
 - **Excluded folders** — turn redaction off in specific folders (e.g. `Archive`), even inside a limited folder, so you can allow it everywhere except a few folders, or in a folder except one of its subfolders.
@@ -50,7 +50,7 @@ Treat Redacted as a presentation tool for notes you share or publish, not as a s
 
 ## Edge cases worth knowing
 
-- **Emoji and accents**: characters are counted as you see them, so an emoji built from several code points (👨‍👩‍👧, 👍🏽, a flag) or a letter with a combining accent becomes exactly one block.
+- **Emoji and accents**: characters are counted as you see them, so an emoji built from several code points (👨‍👩‍👧, 👍🏽, a flag) or a letter with a combining accent becomes exactly one redaction character.
 - **Multi-line selections**: line breaks are preserved so redacted text keeps its shape, and blank lines stay blank.
 - **Reading view**: redaction only works in editing view, where you can see what's selected.
 

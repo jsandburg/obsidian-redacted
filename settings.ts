@@ -46,14 +46,15 @@ export const DEFAULT_SETTINGS: RedactPluginSettings = {
 /** The "Redaction style" description for each style, shown for the selected one. */
 const STYLE_DESCS: Record<RedactionStyle, string> = {
   "per-character":
-    "Replaces each character with a block, keeping line breaks. The " +
-    "redaction is one-to-one, so it shows how long the original text was.",
+    "Replaces each character with the redaction character, keeping line " +
+    "breaks. The redaction is one-to-one, so it shows how long the original " +
+    "text was.",
   "preserve-spaces":
     "Like per character, but spaces stay visible so word boundaries remain " +
     "— note this reveals word lengths, which makes short phrases easier to guess.",
   "fixed-length":
-    `Replaces each line with ${FIXED_LENGTH} blocks, so no word or line ` +
-    "lengths leak.",
+    `Replaces each line with ${FIXED_LENGTH} redaction characters, so no ` +
+    "word or line lengths leak.",
 };
 
 const PRESET_CHARS: [string, string][] = [
@@ -127,7 +128,7 @@ export class RedactSettingTab extends PluginSettingTab {
         name: "",
         desc:
           "Select text and run the \"Redact selection\" command (or right-click " +
-          "→ Redact selection) to permanently replace it with block characters.",
+          "→ Redact selection) to permanently replace it with redaction characters.",
         searchable: false,
       },
       this.folderList({
