@@ -70,14 +70,18 @@ const PRESET_CHARS: [string, string][] = [
 
 /** Fuzzy picker over the vault's folders, for adding a folder to a list. */
 class FolderPickerModal extends FuzzySuggestModal<TFolder> {
+  /** Paths already in the list, normalized so a hand-typed "Private/" still excludes "Private". */
+  private exclude: string[];
+
   constructor(
     app: App,
     placeholder: string,
-    private exclude: string[],
+    exclude: string[],
     private onPick: (folder: TFolder) => void
   ) {
     super(app);
     this.setPlaceholder(placeholder);
+    this.exclude = exclude.map((f) => normalizePath(f.trim()));
   }
 
   getItems(): TFolder[] {
@@ -105,6 +109,12 @@ export class RedactSettingTab extends PluginSettingTab {
   constructor(app: App, plugin: RedactPlugin) {
     super(app, plugin);
     this.plugin = plugin;
+  }
+
+  /** Forget the "Custom…" choice when the tab closes, so it reopens showing the saved character. */
+  hide(): void {
+    this.customMode = false;
+    super.hide();
   }
 
   getControlValue(key: string): unknown {
