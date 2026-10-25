@@ -11,7 +11,7 @@ import {
   normalizePath,
 } from "obsidian";
 import { RedactPluginSettings, DEFAULT_SETTINGS, RedactSettingTab } from "./settings";
-import { redactString } from "./redact";
+import { redactString, blockCharError } from "./redact";
 
 // ---------------------------------------------------------------------------
 // Plugin
@@ -56,11 +56,7 @@ export default class RedactPlugin extends Plugin {
       this.app.workspace.on(
         "editor-menu",
         (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
-          if (
-            this.redactionChanges(editor).length === 0 ||
-            !this.isRedactionAllowed(info.file)
-          )
-            return;
+          if (!editor.somethingSelected() || !this.isRedactionAllowed(info.file)) return;
           menu.addItem((item) =>
             item
               .setTitle("Redact selection")
@@ -228,6 +224,12 @@ export default class RedactPlugin extends Plugin {
     const data = (await this.loadData()) as Partial<RedactPluginSettings> | null;
     // Copy the default arrays so adding a folder never mutates DEFAULT_SETTINGS.
     this.settings = { ...DEFAULT_SETTINGS, watchedFolders: [], excludedFolders: [], ...data };
+    // An earlier version could save a character that no longer passes
+    // validation (e.g. an empty string, which would make redaction delete
+    // the selection). The settings tab flags it; the command must not use it.
+    if (blockCharError(this.settings.blockChar)) {
+      this.settings.blockChar = DEFAULT_SETTINGS.blockChar;
+    }
   }
 
   async saveSettings() {

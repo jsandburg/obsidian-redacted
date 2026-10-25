@@ -42,8 +42,9 @@ export function blockCharError(char: string): string | undefined {
  *
  *   per-character   — every character becomes the block character; newlines
  *                     are kept so multi-line text keeps its shape.
- *   preserve-spaces — like per-character, but spaces are also kept, so word
- *                     boundaries stay visible (leaks word lengths).
+ *   preserve-spaces — like per-character, but whitespace (spaces, tabs,
+ *                     non-breaking spaces) is also kept, so word boundaries
+ *                     stay visible (leaks word lengths).
  *   fixed-length    — each line collapses to a constant run of blocks, so
  *                     line lengths don't leak (line breaks are kept).
  *
@@ -61,7 +62,7 @@ export function redactString(input: string, settings: RedactPluginSettings): str
       if (line.length === 0) return line; // blank lines stay blank
       if (redactionStyle === "fixed-length") return blockChar.repeat(FIXED_LENGTH);
       return redactionStyle === "preserve-spaces"
-        ? splitGraphemes(line).map((ch) => (ch === " " ? " " : blockChar)).join("")
+        ? splitGraphemes(line).map((ch) => (/^\s$/.test(ch) ? ch : blockChar)).join("")
         : blockChar.repeat(splitGraphemes(line).length);
     })
     .join("\n");
