@@ -53,7 +53,7 @@ const STYLE_DESCS: Record<RedactionStyle, string> = {
     "— note this reveals word lengths, which makes short phrases easier to guess.",
   "fixed-length":
     `Replaces each line with ${FIXED_LENGTH} redaction characters, so no ` +
-    "word or line lengths leak.",
+    "word or line lengths leak. The number of lines still shows.",
 };
 
 const PRESET_CHARS: [string, string][] = [
