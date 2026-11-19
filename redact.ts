@@ -23,15 +23,17 @@ export function blockCharError(char: string): string | undefined {
   if (splitGraphemes(char).length !== 1) {
     return "Enter a single character.";
   }
-  // Blank or invisible: whitespace, control and format characters (e.g.
-  // zero-width space), or a lone combining mark.
-  if (/^[\s\p{Cc}\p{Cf}\p{M}]+$/u.test(char)) {
+  // Blank or invisible: whitespace, control, format (e.g. zero-width space),
+  // private-use and unassigned characters, a lone combining mark, or the
+  // blank-rendering letters and symbols (Hangul fillers, braille blank).
+  if (/^[\s\p{C}\p{M}ᅟᅠ⠀ㅤﾠ]+$/u.test(char)) {
     return "Pick a visible character — a blank one makes redacted text look like empty space.";
   }
   // ASCII punctuation is Markdown syntax: runs of * - _ = render as dividers
   // or headings, ` and ~ open code blocks, and %% or $$ can hide or swallow
-  // the rest of the note.
-  if (/^[\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E]$/.test(char)) {
+  // the rest of the note. Only the first code point is tested, so a symbol
+  // followed by a combining mark or variation selector is caught too.
+  if (/^[\x21-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E]/.test(char)) {
     return "Markdown symbols like * - # ~ can turn redacted text into formatting. Try a lookalike instead — ✱ Heavy asterisk is in the list above.";
   }
   return undefined;

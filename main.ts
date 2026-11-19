@@ -224,10 +224,19 @@ export default class RedactPlugin extends Plugin {
     const data = (await this.loadData()) as Partial<RedactPluginSettings> | null;
     // Copy the default arrays so adding a folder never mutates DEFAULT_SETTINGS.
     this.settings = { ...DEFAULT_SETTINGS, watchedFolders: [], excludedFolders: [], ...data };
+    // data.json can be hand-edited or corrupted: keep only string folder
+    // entries and a known style, so the commands never throw on bad data.
+    const strings = (value: unknown): string[] =>
+      Array.isArray(value) ? value.filter((f): f is string => typeof f === "string") : [];
+    this.settings.watchedFolders = strings(this.settings.watchedFolders);
+    this.settings.excludedFolders = strings(this.settings.excludedFolders);
+    if (!["per-character", "preserve-spaces", "fixed-length"].includes(this.settings.redactionStyle)) {
+      this.settings.redactionStyle = DEFAULT_SETTINGS.redactionStyle;
+    }
     // An earlier version could save a character that no longer passes
     // validation (e.g. an empty string, which would make redaction delete
     // the selection). The settings tab flags it; the command must not use it.
-    if (blockCharError(this.settings.blockChar)) {
+    if (typeof this.settings.blockChar !== "string" || blockCharError(this.settings.blockChar)) {
       this.settings.blockChar = DEFAULT_SETTINGS.blockChar;
     }
   }
